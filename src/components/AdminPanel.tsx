@@ -181,7 +181,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${t.type === 'deposit' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
                           {t.type === 'deposit' ? 'ডিপোজিট' : 'উইথড্র'}
                         </span>
-                        <span className="text-[10px] text-white/40 capitalize">{t.method}</span>
+                        {t.method === 'bkash' ? (
+                          <img src="https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155670.jpg?alt=media&token=6c83af6f-3435-4de3-a7dc-c8790724f4d8" alt="bkash" className="h-4 w-auto rounded" referrerPolicy="no-referrer" />
+                        ) : t.method === 'nagad' ? (
+                          <img src="https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155668.png?alt=media&token=a0911f17-5847-4065-9627-c4afc8815380" alt="nagad" className="h-4 w-auto rounded" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="text-[10px] text-white/40 capitalize">{t.method}</span>
+                        )}
                       </div>
                       <p className="text-xs font-bold">{t.user_name || 'N/A'}</p>
                       <p className="text-[10px] text-white/40">{t.user_phone || 'N/A'}</p>

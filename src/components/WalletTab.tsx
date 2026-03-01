@@ -86,13 +86,21 @@ const WalletTab: React.FC<WalletTabProps> = ({
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">পেমেন্ট মেথড</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {['bkash', 'nagad', 'rocket'].map(m => (
+                    {[
+                      { id: 'bkash', logo: 'https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155670.jpg?alt=media&token=6c83af6f-3435-4de3-a7dc-c8790724f4d8' },
+                      { id: 'nagad', logo: 'https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155668.png?alt=media&token=a0911f17-5847-4065-9627-c4afc8815380' },
+                      { id: 'rocket', label: 'Rocket' }
+                    ].map(m => (
                       <button
-                        key={m}
-                        onClick={() => setWithdrawData({...withdrawData, method: m})}
-                        className={`py-2 rounded-xl border transition-all text-xs font-bold capitalize ${withdrawData.method === m ? 'border-primary bg-primary/10 text-primary' : 'border-white/5 bg-white/5 text-white/40'}`}
+                        key={m.id}
+                        onClick={() => setWithdrawData({...withdrawData, method: m.id})}
+                        className={`h-12 rounded-xl border transition-all flex items-center justify-center overflow-hidden ${withdrawData.method === m.id ? 'border-primary bg-primary/10' : 'border-white/5 bg-white/5'}`}
                       >
-                        {m}
+                        {m.logo ? (
+                          <img src={m.logo} alt={m.id} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="text-xs font-bold text-white/40 capitalize">{m.label}</span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -175,13 +183,21 @@ const WalletTab: React.FC<WalletTabProps> = ({
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">পেমেন্ট মেথড</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {['bkash', 'nagad', 'rocket'].map(m => (
+                    {[
+                      { id: 'bkash', logo: 'https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155670.jpg?alt=media&token=6c83af6f-3435-4de3-a7dc-c8790724f4d8' },
+                      { id: 'nagad', logo: 'https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155668.png?alt=media&token=a0911f17-5847-4065-9627-c4afc8815380' },
+                      { id: 'rocket', label: 'Rocket' }
+                    ].map(m => (
                       <button
-                        key={m}
-                        onClick={() => setDepositData({...depositData, method: m})}
-                        className={`py-2 rounded-xl border transition-all text-xs font-bold capitalize ${depositData.method === m ? 'border-primary bg-primary/10 text-primary' : 'border-white/5 bg-white/5 text-white/40'}`}
+                        key={m.id}
+                        onClick={() => setDepositData({...depositData, method: m.id})}
+                        className={`h-12 rounded-xl border transition-all flex items-center justify-center overflow-hidden ${depositData.method === m.id ? 'border-primary bg-primary/10' : 'border-white/5 bg-white/5'}`}
                       >
-                        {m}
+                        {m.logo ? (
+                          <img src={m.logo} alt={m.id} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="text-xs font-bold text-white/40 capitalize">{m.label}</span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -261,7 +277,15 @@ const WalletTab: React.FC<WalletTabProps> = ({
                 {t.amount > 0 ? <ArrowUpRight size={20} /> : <ArrowDownLeft size={20} />}
               </div>
               <div>
-                <p className="font-bold text-sm">{t.type === 'deposit' ? 'ডিপোজিট' : t.type === 'entry_fee' ? 'এন্ট্রি ফি' : 'উইথড্র'}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-sm">{t.type === 'deposit' ? 'ডিপোজিট' : t.type === 'entry_fee' ? 'এন্ট্রি ফি' : 'উইথড্র'}</p>
+                  {t.method === 'bkash' && (
+                    <img src="https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155670.jpg?alt=media&token=6c83af6f-3435-4de3-a7dc-c8790724f4d8" alt="bkash" className="h-3 w-auto rounded" referrerPolicy="no-referrer" />
+                  )}
+                  {t.method === 'nagad' && (
+                    <img src="https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155668.png?alt=media&token=a0911f17-5847-4065-9627-c4afc8815380" alt="nagad" className="h-3 w-auto rounded" referrerPolicy="no-referrer" />
+                  )}
+                </div>
                 <p className="text-[10px] text-white/40">
                   {t.created_at instanceof Timestamp ? t.created_at.toDate().toLocaleString('bn-BD') : new Date(t.created_at).toLocaleString('bn-BD')}
                 </p>
