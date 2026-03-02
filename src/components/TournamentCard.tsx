@@ -10,6 +10,8 @@ interface TournamentCardProps {
   adProgress?: number;
   isWatchingAd?: boolean;
   onWatchAd?: (id: string) => void;
+  isJoined?: boolean;
+  onSubmitResult?: (id: string) => void;
 }
 
 const TournamentCard: React.FC<TournamentCardProps> = ({ 
@@ -18,7 +20,9 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   onEdit,
   adProgress = 0,
   isWatchingAd = false,
-  onWatchAd
+  onWatchAd,
+  isJoined = false,
+  onSubmitResult
 }) => {
   const adsRequired = tournament.ads_required || 0;
   const isFree = tournament.is_free;
@@ -70,6 +74,14 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
             <CreditCard size={16} className="text-primary" />
             <span>এন্ট্রি: {isFree ? 'ফ্রি (বিজ্ঞাপন)' : `৳${tournament.entry_fee}`}</span>
           </div>
+          {tournament.per_kill !== undefined && tournament.per_kill > 0 && (
+            <div className="flex items-center gap-2 text-white/60 text-sm col-span-2">
+              <div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              </div>
+              <span>প্রতি কিল: ৳{tournament.per_kill}</span>
+            </div>
+          )}
         </div>
 
         {isFree && !adsComplete && (
@@ -108,17 +120,34 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
               </button>
             )}
             
-            <button 
-              onClick={() => onJoin(tournament)}
-              disabled={tournament.slots_filled >= tournament.slots || (isFree && !adsComplete)}
-              className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${
-                tournament.slots_filled >= tournament.slots || (isFree && !adsComplete)
-                ? 'bg-white/10 text-white/30 cursor-not-allowed' 
-                : 'bg-primary hover:bg-accent text-white'
-              }`}
-            >
-              {tournament.slots_filled >= tournament.slots ? 'ফুল' : 'জয়েন করুন'}
-            </button>
+            {isJoined && onSubmitResult && (
+              <button 
+                onClick={() => onSubmitResult(tournament.id)}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all"
+              >
+                রেজাল্ট দিন
+              </button>
+            )}
+            
+            {!isJoined && (
+              <button 
+                onClick={() => onJoin(tournament)}
+                disabled={tournament.slots_filled >= tournament.slots || (isFree && !adsComplete)}
+                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${
+                  tournament.slots_filled >= tournament.slots || (isFree && !adsComplete)
+                  ? 'bg-white/10 text-white/30 cursor-not-allowed' 
+                  : 'bg-primary hover:bg-accent text-white'
+                }`}
+              >
+                {tournament.slots_filled >= tournament.slots ? 'ফুল' : 'জয়েন করুন'}
+              </button>
+            )}
+            
+            {isJoined && !onSubmitResult && (
+               <div className="bg-green-500/20 text-green-500 px-4 py-2 rounded-lg font-bold text-sm">
+                 জয়েন করেছেন
+               </div>
+            )}
           </div>
         </div>
         <div className="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden">

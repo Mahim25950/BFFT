@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, ShieldCheck, Search, Ban, UserCheck, CreditCard, Shield, ShieldAlert, Bell, Send, Megaphone, Image as ImageIcon, Link as LinkIcon, History, Clock } from 'lucide-react';
-import { Tournament, Transaction, User, Announcement } from '../types';
+import { Tournament, Transaction, User, Announcement, TournamentResult } from '../types';
 import TournamentCard from './TournamentCard';
 import { collection, addDoc, updateDoc, doc, Timestamp, getDoc, setDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
 
 interface AdminPanelProps {
   isAdmin: boolean;
@@ -19,7 +20,9 @@ interface AdminPanelProps {
   pendingTransactions: Transaction[];
   tournaments: Tournament[];
   allUsers: User[];
+  pendingResults: TournamentResult[];
   handleApproveTransaction: (id: string, status: 'approved' | 'rejected') => void;
+  handleApproveResult: (result: TournamentResult, status: 'approved' | 'rejected', isWinner?: boolean) => void;
   handleUpdateUser: (userId: string, data: Partial<User>) => void;
   toast: (msg: string, type: 'success' | 'error') => void;
 }
@@ -37,7 +40,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   pendingTransactions,
   tournaments,
   allUsers,
+  pendingResults,
   handleApproveTransaction,
+  handleApproveResult,
   handleUpdateUser,
   toast
 }) => {
@@ -56,10 +61,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     button_link: ''
   });
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [isCreatingTournament, setIsCreatingTournament] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedUserForHistory, setSelectedUserForHistory] = useState<User | null>(null);
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [winnerResults, setWinnerResults] = useState<Record<string, boolean>>({});
 
   const fetchUserTransactions = async (userId: string) => {
     setIsLoadingHistory(true);
@@ -218,6 +225,67 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               {pendingTransactions.length === 0 && (
                 <div className="col-span-full text-center py-10 text-white/20">
                   কোন পেন্ডিং রিকোয়েস্ট নেই
+                </div>
+              )}
+            </div>
+
+            <h3 className="font-bold mb-4">পেন্ডিং রেজাল্ট (উইনার)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {pendingResults.map(r => (
+                <div key={r.id} className="glass p-4 rounded-2xl">
+                  <div className="flex justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-bold">{r.user_name}</p>
+                      <p className="text-[10px] text-white/40">{r.user_phone}</p>
+                      <p className="text-[10px] text-primary mt-1">Tournament ID: {r.tournament_id}</p>
+                      {r.kills !== undefined && (
+                        <p className="text-xs font-bold text-green-500 mt-1">কিল: {r.kills}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[10px] text-white/40">জমা দেওয়া হয়েছে:</p>
+                       <p className="text-[10px] text-white/60">{new Date(r.created_at?.seconds * 1000).toLocaleString('bn-BD')}</p>
+                       <div className="mt-2 flex items-center justify-end gap-2">
+                         <span className="text-[10px] text-white/40">Winner?</span>
+                         <button 
+                           onClick={() => setWinnerResults({ ...winnerResults, [r.id]: !winnerResults[r.id] })}
+                           className={`w-8 h-4 rounded-full transition-colors relative ${winnerResults[r.id] ? 'bg-primary' : 'bg-white/10'}`}
+                         >
+                           <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${winnerResults[r.id] ? 'left-4.5' : 'left-0.5'}`} />
+                         </button>
+                       </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4 aspect-video rounded-xl overflow-hidden border border-white/10">
+                    <img 
+                      src={r.screenshot} 
+                      alt="Result Proof" 
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => window.open(r.screenshot, '_blank')}
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => handleApproveResult(r, 'rejected')}
+                      className="bg-red-500/20 text-red-500 py-2 rounded-lg text-sm font-bold"
+                    >
+                      বাতিল
+                    </button>
+                    <button 
+                      onClick={() => handleApproveResult(r, 'approved', winnerResults[r.id])}
+                      className="bg-green-500 text-white py-2 rounded-lg text-sm font-bold"
+                    >
+                      পুরস্কার দিন
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {pendingResults.length === 0 && (
+                <div className="col-span-full text-center py-10 text-white/20">
+                  কোন পেন্ডিং রেজাল্ট নেই
                 </div>
               )}
             </div>
@@ -451,14 +519,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div>
                     <label className="text-xs text-white/40 mb-1 block flex items-center gap-1">
-                      <ImageIcon size={12} /> ইমেজ ইউআরএল (ঐচ্ছিক)
+                      <ImageIcon size={12} /> ইমেজ লিঙ্ক (ঐচ্ছিক)
                     </label>
                     <input 
-                      type="text"
+                      type="url"
                       className="input-field"
                       value={announcementForm.image}
                       onChange={(e) => setAnnouncementForm({...announcementForm, image: e.target.value})}
-                      placeholder="ছবির লিংক দিন"
+                      placeholder="https://example.com/image.jpg"
                     />
                   </div>
                 </div>
@@ -513,8 +581,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           updated_at: Timestamp.now()
                         }, { merge: true });
                         toast('এনাউন্সমেন্ট আপডেট হয়েছে', 'success');
-                      } catch (e) {
-                        toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                      } catch (e: any) {
+                        console.error(e);
+                        toast(`Error: ${e.message || 'আপডেট করতে সমস্যা হয়েছে'}`, 'error');
                       } finally {
                         setIsSavingAnnouncement(false);
                       }
@@ -562,13 +631,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">ব্যানার ইউআরএল</label>
+                  <label className="text-xs text-white/40 mb-1 block">ব্যানার ইমেজ লিঙ্ক</label>
                   <input 
-                    type="text"
+                    type="url"
                     className="input-field"
                     value={newTournament.banner}
                     onChange={(e) => setNewTournament({...newTournament, banner: e.target.value})}
-                    placeholder="ছবির লিংক দিন"
+                    placeholder="https://example.com/banner.jpg"
                   />
                 </div>
 
@@ -668,6 +737,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">প্রতি কিল রিওয়ার্ড (৳)</label>
+                  <input 
+                    type="number"
+                    className="input-field"
+                    value={newTournament.per_kill || 0}
+                    onChange={(e) => setNewTournament({...newTournament, per_kill: Number(e.target.value)})}
+                    placeholder="যেমন: ৫"
+                  />
+                </div>
+
                 <div className="pt-4 flex gap-3">
                   <button 
                     onClick={() => setIsCreateModalOpen(false)}
@@ -675,12 +755,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   >
                     বাতিল
                   </button>
-                  <button 
+                   <button 
+                    disabled={isCreatingTournament}
                     onClick={async () => {
                       if (!newTournament.title || !newTournament.start_time) {
                         toast('নাম এবং সময় দেওয়া বাধ্যতামূলক', 'error');
                         return;
                       }
+                      if (!newTournament.banner) {
+                        toast('ব্যানার ইমেজ লিঙ্ক দিন', 'error');
+                        return;
+                      }
+
+                      setIsCreatingTournament(true);
                       try {
                         await addDoc(collection(db, "tournaments"), {
                           ...newTournament,
@@ -698,15 +785,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           match_type: 'Solo',
                           map_type: 'Bermuda',
                           start_time: '',
-                          slots: 48
+                          slots: 48,
+                          is_free: false,
+                          ads_required: 0
                         });
-                      } catch (e) {
-                        toast('তৈরি করতে সমস্যা হয়েছে', 'error');
+                      } catch (e: any) {
+                        console.error(e);
+                        toast(`Error: ${e.message || 'তৈরি করতে সমস্যা হয়েছে'}`, 'error');
+                      } finally {
+                        setIsCreatingTournament(false);
                       }
                     }}
-                    className="btn-primary flex-1 py-3"
+                    className="btn-primary flex-1 py-3 disabled:opacity-50"
                   >
-                    তৈরি করুন
+                    {isCreatingTournament ? 'তৈরি হচ্ছে...' : 'তৈরি করুন'}
                   </button>
                 </div>
               </div>
@@ -746,12 +838,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 
                 <div>
-                  <label className="text-xs text-white/40 mb-1 block">ব্যানার ইউআরএল</label>
+                  <label className="text-xs text-white/40 mb-1 block">ব্যানার ইমেজ লিঙ্ক</label>
                   <input 
-                    type="text"
+                    type="url"
                     className="input-field"
                     value={editingTournament.banner}
                     onChange={(e) => setEditingTournament({...editingTournament, banner: e.target.value})}
+                    placeholder="https://example.com/banner.jpg"
                   />
                 </div>
 
@@ -851,6 +944,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">প্রতি কিল রিওয়ার্ড (৳)</label>
+                  <input 
+                    type="number"
+                    className="input-field"
+                    value={editingTournament.per_kill || 0}
+                    onChange={(e) => setEditingTournament({...editingTournament, per_kill: Number(e.target.value)})}
+                    placeholder="যেমন: ৫"
+                  />
+                </div>
+
                 <div className="pt-4 flex gap-3">
                   <button 
                     onClick={() => setIsEditTournamentModalOpen(false)}
@@ -858,20 +962,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   >
                     বাতিল
                   </button>
-                  <button 
+                   <button 
+                    disabled={isCreatingTournament}
                     onClick={async () => {
+                      setIsCreatingTournament(true);
                       try {
                         const { id, ...data } = editingTournament;
-                        await updateDoc(doc(db, "tournaments", id), data);
+                        await updateDoc(doc(db, "tournaments", id), {
+                          ...data
+                        });
                         toast('টুর্নামেন্ট আপডেট হয়েছে', 'success');
                         setIsEditTournamentModalOpen(false);
-                      } catch (e) {
-                        toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                      } catch (e: any) {
+                        console.error(e);
+                        toast(`Error: ${e.message || 'আপডেট করতে সমস্যা হয়েছে'}`, 'error');
+                      } finally {
+                        setIsCreatingTournament(false);
                       }
                     }}
-                    className="btn-primary flex-1 py-3"
+                    className="btn-primary flex-1 py-3 disabled:opacity-50"
                   >
-                    আপডেট করুন
+                    {isCreatingTournament ? 'আপডেট হচ্ছে...' : 'আপডেট করুন'}
                   </button>
                 </div>
               </div>

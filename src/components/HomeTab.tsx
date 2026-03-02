@@ -10,6 +10,8 @@ interface HomeTabProps {
   adProgress: { [key: string]: number };
   isWatchingAd: string | null;
   onWatchAd: (id: string) => void;
+  joinedTournaments: string[];
+  onSubmitResult: (id: string) => void;
 }
 
 const HomeTab: React.FC<HomeTabProps> = ({ 
@@ -17,7 +19,9 @@ const HomeTab: React.FC<HomeTabProps> = ({
   handleJoinTournament,
   adProgress,
   isWatchingAd,
-  onWatchAd
+  onWatchAd,
+  joinedTournaments,
+  onSubmitResult
 }) => {
   return (
     <motion.div 
@@ -49,6 +53,8 @@ const HomeTab: React.FC<HomeTabProps> = ({
               adProgress={adProgress[t.id] || 0}
               isWatchingAd={isWatchingAd === t.id}
               onWatchAd={onWatchAd}
+              isJoined={joinedTournaments.includes(t.id)}
+              onSubmitResult={onSubmitResult}
             />
           ))}
         </div>

@@ -13,6 +13,8 @@ interface AuthFormProps {
   setName: (val: string) => void;
   phone: string;
   setPhone: (val: string) => void;
+  ffUID: string;
+  setFFUID: (val: string) => void;
   showPassword: boolean;
   setShowPassword: (val: boolean) => void;
   handleAuth: () => void;
@@ -30,6 +32,8 @@ const AuthForm: React.FC<AuthFormProps> = ({
   setName,
   phone,
   setPhone,
+  ffUID,
+  setFFUID,
   showPassword,
   setShowPassword,
   handleAuth,
@@ -84,6 +88,16 @@ const AuthForm: React.FC<AuthFormProps> = ({
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
+              <div className="relative">
+                <Trophy className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="ফ্রি ফায়ার ইউআইডি (গেম আইডি)" 
+                  className="input-field pl-12"
+                  value={ffUID}
+                  onChange={(e) => setFFUID(e.target.value)}
+                />
+              </div>
             </motion.div>
           )}
 
@@ -131,6 +145,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
               setIsRegistering(!isRegistering);
               setName('');
               setPhone('');
+              setFFUID('');
             }}
             className="w-full text-center text-sm text-white/40 hover:text-primary transition-colors"
           >

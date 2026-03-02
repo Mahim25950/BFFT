@@ -24,9 +24,10 @@ import {
   Timestamp,
   limit
 } from 'firebase/firestore';
-import { auth, db } from './lib/firebase';
-import { User as UserType, Tournament, Transaction, Notification as NotificationType, Announcement } from './types';
-import { X, ExternalLink } from 'lucide-react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from './lib/firebase';
+import { User as UserType, Tournament, Transaction, Notification as NotificationType, Announcement, TournamentResult } from './types';
+import { X, ExternalLink, Trophy } from 'lucide-react';
 
 // Components
 import Navbar from './components/Navbar';
@@ -60,6 +61,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [ffUID, setFFUID] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -69,6 +71,10 @@ export default function App() {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isEditTournamentModalOpen, setIsEditTournamentModalOpen] = useState(false);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [isJoinSuccess, setIsJoinSuccess] = useState(false);
+  const [selectedTournamentForJoin, setSelectedTournamentForJoin] = useState<Tournament | null>(null);
+  const [inputGameId, setInputGameId] = useState('');
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   
   // Form states
@@ -101,6 +107,46 @@ export default function App() {
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [allUsers, setAllUsers] = useState<UserType[]>([]);
+  const [joinedTournaments, setJoinedTournaments] = useState<string[]>([]);
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [isSubmittingResult, setIsSubmittingResult] = useState(false);
+  const [resultData, setResultData] = useState<{
+    tournamentId: string;
+    screenshot: string;
+    kills: number;
+  }>({
+    tournamentId: '',
+    screenshot: '',
+    kills: 0
+  });
+  const [pendingResults, setPendingResults] = useState<TournamentResult[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      const q = query(collection(db, "tournament_participants"), where("user_id", "==", user.id));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const joined = snapshot.docs.map(doc => doc.data().tournament_id);
+        setJoinedTournaments(joined);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.is_admin && activeTab === 'admin') {
+      const q = query(collection(db, "tournament_results"), where("status", "==", "pending"));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        results.sort((a, b) => {
+          const timeA = a.created_at?.toMillis ? a.created_at.toMillis() : (a.created_at?.seconds ? a.created_at.seconds * 1000 : new Date(a.created_at).getTime());
+          const timeB = b.created_at?.toMillis ? b.created_at.toMillis() : (b.created_at?.seconds ? b.created_at.seconds * 1000 : new Date(b.created_at).getTime());
+          return timeB - timeA;
+        });
+        setPendingResults(results);
+      });
+      return () => unsubscribe();
+    }
+  }, [activeTab, user]);
 
   useEffect(() => {
     let userUnsubscribe: (() => void) | null = null;
@@ -242,7 +288,7 @@ export default function App() {
       toast('ইমেইল এবং পাসওয়ার্ড দিন', 'error');
       return;
     }
-    if (isRegistering && (!name || !phone)) {
+    if (isRegistering && (!name || !phone || !ffUID)) {
       toast('সবগুলো তথ্য পূরণ করুন', 'error');
       return;
     }
@@ -260,6 +306,7 @@ export default function App() {
           email: firebaseUser.email,
           name: name,
           phone: phone,
+          ff_uid: ffUID,
           balance: 0,
           referral_code: referralCode,
           is_admin: isAdmin ? 1 : 0,
@@ -293,6 +340,32 @@ export default function App() {
       return;
     }
 
+    if (t.slots_filled >= t.slots) {
+      toast('টুর্নামেন্টটি পূর্ণ হয়ে গেছে', 'error');
+      return;
+    }
+
+    setSelectedTournamentForJoin(t);
+    setInputGameId('');
+    setIsJoinSuccess(false);
+    setIsJoinModalOpen(true);
+  };
+
+  const confirmJoinTournament = async () => {
+    if (!user || !selectedTournamentForJoin) return;
+    
+    if (!inputGameId.trim()) {
+      toast('গেম আইডি দিন', 'error');
+      return;
+    }
+
+    if (inputGameId.trim() !== user.ff_uid) {
+      toast('ভুল গেম আইডি! আপনার প্রোফাইলে থাকা আইডি ব্যবহার করুন।', 'error');
+      return;
+    }
+
+    const t = selectedTournamentForJoin;
+
     // Check if it's a free match and if user has watched enough ads
     if (t.is_free) {
       const watched = adProgress[t.id] || 0;
@@ -308,11 +381,7 @@ export default function App() {
       }
     }
 
-    if (t.slots_filled >= t.slots) {
-      toast('টুর্নামেন্টটি পূর্ণ হয়ে গেছে', 'error');
-      return;
-    }
-
+    setLoading(true);
     try {
       await runTransaction(db, async (transaction) => {
         const tDoc = await transaction.get(doc(db, "tournaments", t.id.toString()));
@@ -346,15 +415,20 @@ export default function App() {
         transaction.set(newParticipantRef, {
           tournament_id: t.id,
           user_id: user.id,
+          game_id: inputGameId.trim(),
           slot_number: currentSlots + 1,
           status: 'confirmed',
           created_at: Timestamp.now()
         });
       });
       toast('টুর্নামেন্টে জয়েন করা হয়েছে', 'success');
+      setIsJoinSuccess(true);
+      // We don't close the modal immediately to show success state
     } catch (e) {
       console.error(e);
       toast('জয়েন করতে সমস্যা হয়েছে', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -447,6 +521,89 @@ export default function App() {
     }
   };
 
+  const handleSubmitResult = async () => {
+    if (!user || !resultData.tournamentId || !resultData.screenshot) {
+      toast('সবগুলো তথ্য পূরণ করুন', 'error');
+      return;
+    }
+
+    setIsSubmittingResult(true);
+    try {
+      await addDoc(collection(db, "tournament_results"), {
+        tournament_id: resultData.tournamentId,
+        user_id: user.id,
+        user_name: user.name || user.email || 'N/A',
+        user_phone: user.phone || 'N/A',
+        screenshot: resultData.screenshot,
+        kills: resultData.kills,
+        status: 'pending',
+        created_at: Timestamp.now()
+      });
+      setIsResultModalOpen(false);
+      setResultData({ tournamentId: '', screenshot: '', kills: 0 });
+      toast('রেজাল্ট জমা দেওয়া হয়েছে। এডমিন যাচাই করবে।', 'success');
+    } catch (e: any) {
+      console.error(e);
+      toast(`Error: ${e.message || 'জমা দিতে সমস্যা হয়েছে'}`, 'error');
+    } finally {
+      setIsSubmittingResult(false);
+    }
+  };
+
+  const handleApproveResult = async (result: TournamentResult, status: 'approved' | 'rejected', isWinner?: boolean) => {
+    if (!user?.is_admin) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const resultDoc = await transaction.get(doc(db, "tournament_results", result.id));
+        if (!resultDoc.exists()) throw "Result does not exist!";
+
+        transaction.update(doc(db, "tournament_results", result.id), { status, is_winner: isWinner });
+
+        if (status === 'approved') {
+          const tournamentDoc = await transaction.get(doc(db, "tournaments", result.tournament_id));
+          if (!tournamentDoc.exists()) throw "Tournament does not exist!";
+          
+          const tournamentData = tournamentDoc.data();
+          const prizePool = isWinner ? (tournamentData.prize_pool || 0) : 0;
+          const perKill = tournamentData.per_kill || 0;
+          const kills = result.kills || 0;
+          const totalPrize = prizePool + (kills * perKill);
+          
+          if (totalPrize > 0) {
+            transaction.update(doc(db, "users", result.user_id), {
+              balance: increment(totalPrize)
+            });
+
+            const newTransRef = doc(collection(db, "transactions"));
+            transaction.set(newTransRef, {
+              user_id: result.user_id,
+              amount: totalPrize,
+              type: 'prize',
+              status: 'approved',
+              created_at: Timestamp.now(),
+              user_name: result.user_name,
+              user_phone: result.user_phone
+            });
+          }
+
+          // Create notification for user
+          const newNotifRef = doc(collection(db, "notifications"));
+          transaction.set(newNotifRef, {
+            title: isWinner ? 'অভিনন্দন! আপনি জিতেছেন' : 'টুর্নামেন্ট রিওয়ার্ড',
+            message: `আপনার ${tournamentData.title} টুর্নামেন্টের পুরস্কার ৳${totalPrize} (প্রাইজ: ৳${prizePool}, কিল: ${kills}x৳${perKill}) ব্যালেন্সে যোগ করা হয়েছে।`,
+            type: 'success',
+            created_at: Timestamp.now()
+          });
+        }
+      });
+      toast(status === 'approved' ? 'রেজাল্ট অনুমোদন করা হয়েছে' : 'রেজাল্ট বাতিল করা হয়েছে', 'success');
+    } catch (e) {
+      console.error(e);
+      toast('অপারেশন ব্যর্থ হয়েছে', 'error');
+    }
+  };
+
   const toast = (message: string, type: 'success' | 'error') => {
     setShowToast({ message, type });
     setTimeout(() => setShowToast(null), 3000);
@@ -507,6 +664,8 @@ export default function App() {
         setName={setName}
         phone={phone}
         setPhone={setPhone}
+        ffUID={ffUID}
+        setFFUID={setFFUID}
         showPassword={showPassword}
         setShowPassword={setShowPassword}
         handleAuth={handleAuth}
@@ -591,6 +750,11 @@ export default function App() {
               adProgress={adProgress}
               isWatchingAd={isWatchingAd}
               onWatchAd={handleWatchAd}
+              joinedTournaments={joinedTournaments}
+              onSubmitResult={(id) => {
+                setResultData({ ...resultData, tournamentId: id });
+                setIsResultModalOpen(true);
+              }}
             />
           )}
 
@@ -626,7 +790,9 @@ export default function App() {
               pendingTransactions={pendingTransactions}
               tournaments={tournaments}
               allUsers={allUsers}
+              pendingResults={pendingResults}
               handleApproveTransaction={handleApproveTransaction}
+              handleApproveResult={handleApproveResult}
               handleUpdateUser={handleUpdateUser}
               toast={toast}
             />
@@ -650,6 +816,180 @@ export default function App() {
       </main>
 
       <Toast showToast={showToast} />
+
+      {/* Result Submission Modal */}
+      <AnimatePresence>
+        {isResultModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsResultModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-zinc-900 border border-white/10 rounded-3xl p-6"
+            >
+              <h2 className="text-xl font-bold mb-6">রেজাল্ট জমা দিন</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">কতটি কিল করেছেন?</label>
+                  <input 
+                    type="number"
+                    className="input-field"
+                    placeholder="যেমন: ৫"
+                    value={resultData.kills}
+                    onChange={(e) => setResultData({ ...resultData, kills: Number(e.target.value) })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">স্ক্রিনশট ইমেজ লিঙ্ক (Proof)</label>
+                  <input 
+                    type="url"
+                    className="input-field"
+                    placeholder="https://example.com/image.jpg"
+                    value={resultData.screenshot}
+                    onChange={(e) => setResultData({ ...resultData, screenshot: e.target.value })}
+                  />
+                  <p className="text-[10px] text-white/40 mt-2">
+                    ইমেজটি কোনো হোস্টিং সাইটে (যেমন: imgbb.com) আপলোড করে লিঙ্ক এখানে দিন।
+                  </p>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button 
+                    onClick={() => setIsResultModalOpen(false)}
+                    className="btn-secondary flex-1 py-3"
+                    disabled={isSubmittingResult}
+                  >
+                    বাতিল
+                  </button>
+                  <button 
+                    onClick={handleSubmitResult}
+                    className="btn-primary flex-1 py-3"
+                    disabled={isSubmittingResult}
+                  >
+                    {isSubmittingResult ? 'জমা হচ্ছে...' : 'জমা দিন'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Join Tournament Modal */}
+      <AnimatePresence>
+        {isJoinModalOpen && selectedTournamentForJoin && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !loading && !isJoinSuccess && setIsJoinModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            >
+              {!isJoinSuccess ? (
+                <>
+                  <div className="p-6 border-b border-white/5">
+                    <h2 className="text-xl font-bold mb-1">টুর্নামেন্টে জয়েন করুন</h2>
+                    <p className="text-white/40 text-xs">নিচের তথ্যগুলো যাচাই করে জয়েন করুন</p>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {/* Tournament Info Summary */}
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs text-white/40">টুর্নামেন্ট:</span>
+                        <span className="text-sm font-bold">{selectedTournamentForJoin.title}</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs text-white/40">এন্ট্রি ফি:</span>
+                        <span className="text-sm font-bold text-primary">
+                          {selectedTournamentForJoin.is_free ? 'ফ্রি' : `৳${selectedTournamentForJoin.entry_fee}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-white/40">আপনার ব্যালেন্স:</span>
+                        <span className="text-sm font-bold">৳{user.balance}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-xs text-white/40 font-medium">আপনার গেম আইডি (UID)</label>
+                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">প্রোফাইল আইডি: {user.ff_uid}</span>
+                        </div>
+                        <input 
+                          type="text"
+                          className="input-field"
+                          placeholder="আপনার গেম আইডি লিখুন"
+                          value={inputGameId}
+                          onChange={(e) => setInputGameId(e.target.value)}
+                        />
+                        <p className="text-[10px] text-white/30 mt-2 leading-relaxed">
+                          সতর্কতা: আপনার প্রোফাইলে নিবন্ধিত আইডিটিই দিতে হবে। ভুল আইডি দিলে টুর্নামেন্ট থেকে ডিসকোয়ালিফাই করা হতে পারে।
+                        </p>
+                      </div>
+
+                      <div className="pt-2 flex gap-3">
+                        <button 
+                          onClick={() => setIsJoinModalOpen(false)}
+                          className="btn-secondary flex-1 py-3"
+                          disabled={loading}
+                        >
+                          বাতিল
+                        </button>
+                        <button 
+                          onClick={confirmJoinTournament}
+                          className="btn-primary flex-1 py-3 shadow-lg shadow-primary/20"
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>প্রসেসিং...</span>
+                            </div>
+                          ) : 'জয়েন নিশ্চিত করুন'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Trophy className="text-green-500" size={40} />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">অভিনন্দন!</h2>
+                  <p className="text-white/60 mb-8">
+                    আপনি সফলভাবে <span className="text-white font-bold">{selectedTournamentForJoin.title}</span> টুর্নামেন্টে জয়েন করেছেন।
+                  </p>
+                  <button 
+                    onClick={() => setIsJoinModalOpen(false)}
+                    className="btn-primary w-full py-4"
+                  >
+                    ঠিক আছে
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} isAdmin={user.is_admin === 1} />
     </div>

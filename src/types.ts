@@ -32,6 +32,7 @@ export interface Tournament {
   room_password?: string;
   is_free?: boolean;
   ads_required?: number;
+  per_kill?: number;
   created_at: string;
 }
 
@@ -49,6 +50,19 @@ export interface Transaction {
   name?: string;
   user_name?: string;
   user_phone?: string;
+}
+
+export interface TournamentResult {
+  id: string;
+  tournament_id: string;
+  user_id: string;
+  user_name: string;
+  user_phone: string;
+  screenshot: string;
+  kills?: number;
+  is_winner?: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: any;
 }
 
 export interface Notification {

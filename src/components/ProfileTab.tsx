@@ -3,8 +3,9 @@ import { motion } from 'motion/react';
 import { User as UserIcon, Plus, ShieldCheck, CheckCircle2, AlertCircle, Phone, Users, Copy, Settings, ChevronRight, LogOut, CreditCard } from 'lucide-react';
 import { User } from '../types';
 import { signOut } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
+import { auth, db, storage } from '../lib/firebase';
 import { updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 interface ProfileTabProps {
   user: User;
@@ -23,6 +24,29 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   setTempUID,
   toast
 }) => {
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [showAvatarUrlInput, setShowAvatarUrlInput] = React.useState(false);
+  const [avatarUrl, setAvatarUrl] = React.useState(user.avatar || '');
+
+  const handleAvatarUpdate = async () => {
+    if (!avatarUrl) {
+      toast('ইমেজ লিঙ্ক দিন', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await updateDoc(doc(db, "users", user.id), { avatar: avatarUrl });
+      toast('প্রোফাইল পিকচার আপডেট হয়েছে', 'success');
+      setShowAvatarUrlInput(false);
+    } catch (e: any) {
+      console.error(e);
+      toast(`Error: ${e.message || 'আপলোড ব্যর্থ হয়েছে'}`, 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <motion.div 
       key="profile"
@@ -34,13 +58,47 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         <div className="relative">
           <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-accent p-1 mb-4">
             <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
-              <UserIcon size={48} className="text-white/20" />
+              {user.avatar ? (
+                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon size={48} className="text-white/20" />
+              )}
             </div>
           </div>
-          <button className="absolute bottom-4 right-0 w-8 h-8 bg-primary rounded-full border-4 border-black flex items-center justify-center">
+          <button 
+            onClick={() => setShowAvatarUrlInput(!showAvatarUrlInput)}
+            className="absolute bottom-4 right-0 w-8 h-8 bg-primary rounded-full border-4 border-black flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+          >
             <Plus size={16} />
           </button>
         </div>
+
+        {showAvatarUrlInput && (
+          <div className="w-full max-w-xs mt-4 space-y-2">
+            <input 
+              type="url"
+              className="input-field text-xs py-2"
+              placeholder="ইমেজ লিঙ্ক দিন (যেমন: imgbb.com)"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowAvatarUrlInput(false)}
+                className="btn-secondary flex-1 py-2 text-xs"
+              >
+                বাতিল
+              </button>
+              <button 
+                onClick={handleAvatarUpdate}
+                disabled={isUploading}
+                className="btn-primary flex-1 py-2 text-xs"
+              >
+                {isUploading ? 'আপডেট হচ্ছে...' : 'আপডেট'}
+              </button>
+            </div>
+          </div>
+        )}
         <h2 className="text-xl font-bold">{user.name || 'আপনার নাম'}</h2>
         <p className="text-white/40 text-sm">{user.email}</p>
       </div>
