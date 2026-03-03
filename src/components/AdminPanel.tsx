@@ -201,6 +201,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                       <p className="text-xs font-bold">{t.user_name || 'N/A'}</p>
                       <p className="text-[10px] text-white/40">{t.user_phone || 'N/A'}</p>
+                      {t.ff_name && <p className="text-[10px] text-primary font-bold">FF Name: {t.ff_name}</p>}
+                      {t.ff_uid && <p className="text-[10px] text-primary font-bold">FF UID: {t.ff_uid}</p>}
                     </div>
                     <p className="text-primary font-bold">৳{t.amount}</p>
                   </div>

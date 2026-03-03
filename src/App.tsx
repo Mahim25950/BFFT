@@ -29,7 +29,7 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './lib/firebase';
 import { User as UserType, Tournament, Transaction, Notification as NotificationType, Announcement, TournamentResult } from './types';
-import { X, ExternalLink, Trophy } from 'lucide-react';
+import { X, ExternalLink, Trophy, Wallet, Bell, LayoutDashboard, User as UserIcon } from 'lucide-react';
 
 // Components
 import Navbar from './components/Navbar';
@@ -40,6 +40,7 @@ import ProfileTab from './components/ProfileTab';
 import HomeTab from './components/HomeTab';
 import NotificationsTab from './components/NotificationsTab';
 import MyMatchesTab from './components/MyMatchesTab';
+import LeaderboardTab from './components/LeaderboardTab';
 import Header from './components/Header';
 import Toast from './components/Toast';
 
@@ -77,6 +78,7 @@ export default function App() {
   const [isEditTournamentModalOpen, setIsEditTournamentModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isJoinSuccess, setIsJoinSuccess] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedTournamentForJoin, setSelectedTournamentForJoin] = useState<Tournament | null>(null);
   const [inputGameId, setInputGameId] = useState('');
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
@@ -269,7 +271,7 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (user?.is_admin && activeTab === 'admin') {
+    if (user && (activeTab === 'admin' || activeTab === 'leaderboard')) {
       const q = query(collection(db, "users"), orderBy("created_at", "desc"));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -466,6 +468,8 @@ export default function App() {
         user_id: user.id,
         user_name: user.name || 'N/A',
         user_phone: user.phone || 'N/A',
+        ff_uid: user.ff_uid || '',
+        ff_name: user.ff_name || '',
         amount,
         type: 'deposit',
         method,
@@ -490,6 +494,8 @@ export default function App() {
         user_id: user.id,
         user_name: user.name || 'N/A',
         user_phone: user.phone || 'N/A',
+        ff_uid: user.ff_uid || '',
+        ff_name: user.ff_name || '',
         amount,
         type: 'withdraw',
         method,
@@ -619,6 +625,10 @@ export default function App() {
           const kills = result.kills || 0;
           const totalPrize = positionPrize + (kills * perKill);
           
+          transaction.update(doc(db, "users", result.user_id), {
+            total_kills: increment(kills)
+          });
+
           if (totalPrize > 0) {
             transaction.update(doc(db, "users", result.user_id), {
               balance: increment(totalPrize)
@@ -791,7 +801,93 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header user={user} />
+      <Header user={user} onOpenMenu={() => setIsMenuOpen(true)} />
+
+      {/* Side Menu Drawer */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-[100] flex justify-start">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-72 h-full bg-zinc-900 border-r border-white/10 p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <Trophy size={20} className="text-primary" />
+                  </div>
+                  <h2 className="font-bold text-lg">মেনু</h2>
+                </div>
+                <button 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <button 
+                  onClick={() => { setActiveTab('my-matches'); setIsMenuOpen(false); }}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'my-matches' ? 'bg-primary text-white' : 'hover:bg-white/5 text-white/60'}`}
+                >
+                  <Trophy size={20} />
+                  <span className="font-bold">আমার ম্যাচ</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('wallet'); setIsMenuOpen(false); }}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'wallet' ? 'bg-primary text-white' : 'hover:bg-white/5 text-white/60'}`}
+                >
+                  <Wallet size={20} />
+                  <span className="font-bold">ওয়ালেট</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('notifications'); setIsMenuOpen(false); }}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'notifications' ? 'bg-primary text-white' : 'hover:bg-white/5 text-white/60'}`}
+                >
+                  <Bell size={20} />
+                  <span className="font-bold">নোটিফিকেশন</span>
+                </button>
+                {user?.is_admin === 1 && (
+                  <button 
+                    onClick={() => { setActiveTab('admin'); setIsMenuOpen(false); }}
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'admin' ? 'bg-primary text-white' : 'hover:bg-white/5 text-white/60'}`}
+                  >
+                    <LayoutDashboard size={20} />
+                    <span className="font-bold">এডমিন প্যানেল</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="absolute bottom-8 left-6 right-6">
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-black overflow-hidden flex items-center justify-center">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <UserIcon size={20} className="text-white/20" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{user?.name || 'User'}</p>
+                    <p className="text-[10px] text-white/40 truncate">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <main className="pt-24 px-6">
         <AnimatePresence mode="wait">
@@ -808,6 +904,10 @@ export default function App() {
                 setIsResultModalOpen(true);
               }}
             />
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <LeaderboardTab users={allUsers} />
           )}
 
           {activeTab === 'my-matches' && (
@@ -1063,7 +1163,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} isAdmin={user.is_admin === 1} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
 }

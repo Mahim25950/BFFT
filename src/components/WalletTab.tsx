@@ -85,11 +85,10 @@ const WalletTab: React.FC<WalletTabProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="text-xs text-white/40 mb-1 block">পেমেন্ট মেথড</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {[
                       { id: 'bkash', logo: 'https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155670.jpg?alt=media&token=6c83af6f-3435-4de3-a7dc-c8790724f4d8' },
-                      { id: 'nagad', logo: 'https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155668.png?alt=media&token=a0911f17-5847-4065-9627-c4afc8815380' },
-                      { id: 'rocket', label: 'Rocket' }
+                      { id: 'recharge', label: 'Recharge' }
                     ].map(m => (
                       <button
                         key={m.id}
@@ -284,6 +283,9 @@ const WalletTab: React.FC<WalletTabProps> = ({
                   )}
                   {t.method === 'nagad' && (
                     <img src="https://firebasestorage.googleapis.com/v0/b/apps-sell-receipt.appspot.com/o/image%2F1000155668.png?alt=media&token=a0911f17-5847-4065-9627-c4afc8815380" alt="nagad" className="h-3 w-auto rounded" referrerPolicy="no-referrer" />
+                  )}
+                  {t.method === 'recharge' && (
+                    <span className="text-[10px] bg-blue-500/20 text-blue-500 px-1.5 py-0.5 rounded font-bold">Recharge</span>
                   )}
                 </div>
                 <p className="text-[10px] text-white/40">

@@ -118,44 +118,50 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             <div className="flex-1">
               <p className="font-bold text-sm">ফ্রি ফায়ার ইউআইডি</p>
               {isEditingUID ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <input 
-                    type="text"
-                    className="input-field py-1 text-xs"
-                    value={tempUID}
-                    onChange={(e) => setTempUID(e.target.value)}
-                    placeholder="আপনার ইউআইডি লিখুন"
-                    autoFocus
-                  />
-                  <button 
-                    onClick={async () => {
-                      if (tempUID.trim()) {
-                        try {
-                          await updateDoc(doc(db, "users", user.id), { ff_uid: tempUID.trim() });
-                          toast('ইউআইডি আপডেট হয়েছে', 'success');
-                          setIsEditingUID(false);
-                        } catch (e) {
-                          toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                <div className="flex flex-col gap-2 mt-1">
+                  <p className="text-[10px] text-yellow-500 font-bold flex items-center gap-1">
+                    <AlertCircle size={10} />
+                    সতর্কতা: একবার সেট করলে আর পরিবর্তন করা যাবে না!
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      className="input-field py-1 text-xs"
+                      value={tempUID}
+                      onChange={(e) => setTempUID(e.target.value)}
+                      placeholder="আপনার ইউআইডি লিখুন"
+                      autoFocus
+                    />
+                    <button 
+                      onClick={async () => {
+                        if (tempUID.trim()) {
+                          try {
+                            await updateDoc(doc(db, "users", user.id), { ff_uid: tempUID.trim() });
+                            toast('ইউআইডি আপডেট হয়েছে', 'success');
+                            setIsEditingUID(false);
+                          } catch (e) {
+                            toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                          }
                         }
-                      }
-                    }}
-                    className="bg-primary text-white p-1 rounded-lg"
-                  >
-                    <CheckCircle2 size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setIsEditingUID(false)}
-                    className="bg-white/10 text-white/60 p-1 rounded-lg"
-                  >
-                    <AlertCircle size={16} />
-                  </button>
+                      }}
+                      className="bg-primary text-white p-1 rounded-lg"
+                    >
+                      <CheckCircle2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setIsEditingUID(false)}
+                      className="bg-white/10 text-white/60 p-1 rounded-lg"
+                    >
+                      <AlertCircle size={16} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <p className="text-xs text-white/40">{user.ff_uid || 'সেট করা নেই'}</p>
               )}
             </div>
           </div>
-          {!isEditingUID && (
+          {!isEditingUID && (user.is_admin === 1 || !user.ff_uid) && (
             <button 
               onClick={() => {
                 setTempUID(user.ff_uid || '');
@@ -163,7 +169,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               }}
               className="text-primary text-xs font-bold"
             >
-              এডিট
+              {user.ff_uid ? 'এডিট' : 'সেট করুন'}
             </button>
           )}
         </div>
@@ -174,44 +180,50 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             <div className="flex-1">
               <p className="font-bold text-sm">ফ্রি ফায়ার ইন-গেম নাম</p>
               {isEditingFFName ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <input 
-                    type="text"
-                    className="input-field py-1 text-xs"
-                    value={tempFFName}
-                    onChange={(e) => setTempFFName(e.target.value)}
-                    placeholder="আপনার ইন-গেম নাম লিখুন"
-                    autoFocus
-                  />
-                  <button 
-                    onClick={async () => {
-                      if (tempFFName.trim()) {
-                        try {
-                          await updateDoc(doc(db, "users", user.id), { ff_name: tempFFName.trim() });
-                          toast('ইন-গেম নাম আপডেট হয়েছে', 'success');
-                          setIsEditingFFName(false);
-                        } catch (e) {
-                          toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                <div className="flex flex-col gap-2 mt-1">
+                  <p className="text-[10px] text-yellow-500 font-bold flex items-center gap-1">
+                    <AlertCircle size={10} />
+                    সতর্কতা: একবার সেট করলে আর পরিবর্তন করা যাবে না!
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      className="input-field py-1 text-xs"
+                      value={tempFFName}
+                      onChange={(e) => setTempFFName(e.target.value)}
+                      placeholder="আপনার ইন-গেম নাম লিখুন"
+                      autoFocus
+                    />
+                    <button 
+                      onClick={async () => {
+                        if (tempFFName.trim()) {
+                          try {
+                            await updateDoc(doc(db, "users", user.id), { ff_name: tempFFName.trim() });
+                            toast('ইন-গেম নাম আপডেট হয়েছে', 'success');
+                            setIsEditingFFName(false);
+                          } catch (e) {
+                            toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                          }
                         }
-                      }
-                    }}
-                    className="bg-primary text-white p-1 rounded-lg"
-                  >
-                    <CheckCircle2 size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setIsEditingFFName(false)}
-                    className="bg-white/10 text-white/60 p-1 rounded-lg"
-                  >
-                    <AlertCircle size={16} />
-                  </button>
+                      }}
+                      className="bg-primary text-white p-1 rounded-lg"
+                    >
+                      <CheckCircle2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setIsEditingFFName(false)}
+                      className="bg-white/10 text-white/60 p-1 rounded-lg"
+                    >
+                      <AlertCircle size={16} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <p className="text-xs text-white/40">{user.ff_name || 'সেট করা নেই'}</p>
               )}
             </div>
           </div>
-          {!isEditingFFName && (
+          {!isEditingFFName && (user.is_admin === 1 || !user.ff_name) && (
             <button 
               onClick={() => {
                 setTempFFName(user.ff_name || '');
@@ -219,7 +231,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               }}
               className="text-primary text-xs font-bold"
             >
-              এডিট
+              {user.ff_name ? 'এডিট' : 'সেট করুন'}
             </button>
           )}
         </div>

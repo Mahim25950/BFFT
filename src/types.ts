@@ -14,6 +14,7 @@ export interface User {
   referred_by?: string;
   is_admin: number;
   is_banned: number;
+  total_kills?: number;
   created_at: string;
 }
 
@@ -54,6 +55,8 @@ export interface Transaction {
   name?: string;
   user_name?: string;
   user_phone?: string;
+  ff_uid?: string;
+  ff_name?: string;
 }
 
 export interface TournamentResult {
