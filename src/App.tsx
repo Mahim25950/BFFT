@@ -18,6 +18,8 @@ import {
   where, 
   onSnapshot, 
   addDoc, 
+  getDocs,
+  deleteDoc,
   orderBy,
   increment,
   runTransaction,
@@ -63,6 +65,7 @@ export default function App() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [ffUID, setFFUID] = useState('');
+  const [ffName, setFFName] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -91,6 +94,8 @@ export default function App() {
   });
   const [isEditingUID, setIsEditingUID] = useState(false);
   const [tempUID, setTempUID] = useState('');
+  const [isEditingFFName, setIsEditingFFName] = useState(false);
+  const [tempFFName, setTempFFName] = useState('');
   const [newTournament, setNewTournament] = useState({
     title: '',
     banner: '',
@@ -296,7 +301,7 @@ export default function App() {
       toast('ইমেইল এবং পাসওয়ার্ড দিন', 'error');
       return;
     }
-    if (isRegistering && (!name || !phone || !ffUID)) {
+    if (isRegistering && (!name || !phone || !ffUID || !ffName)) {
       toast('সবগুলো তথ্য পূরণ করুন', 'error');
       return;
     }
@@ -315,6 +320,7 @@ export default function App() {
           name: name,
           phone: phone,
           ff_uid: ffUID,
+          ff_name: ffName,
           balance: 0,
           referral_code: referralCode,
           is_admin: isAdmin ? 1 : 0,
@@ -391,6 +397,19 @@ export default function App() {
 
     setLoading(true);
     try {
+      // Check for duplicate entry with same FF UID for this tournament
+      const q = query(
+        collection(db, "tournament_participants"), 
+        where("tournament_id", "==", t.id),
+        where("game_id", "==", inputGameId.trim())
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        toast('এই গেম আইডি দিয়ে ইতিমধ্যে জয়েন করা হয়েছে', 'error');
+        setLoading(false);
+        return;
+      }
+
       await runTransaction(db, async (transaction) => {
         const tDoc = await transaction.get(doc(db, "tournaments", t.id.toString()));
         const uDoc = await transaction.get(doc(db, "users", user.id.toString()));
@@ -529,6 +548,18 @@ export default function App() {
     }
   };
 
+  const handleDeleteTournament = async (tournamentId: string) => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে আপনি এই টুর্নামেন্টটি স্থায়ীভাবে মুছে ফেলতে চান?')) return;
+    
+    try {
+      await deleteDoc(doc(db, "tournaments", tournamentId));
+      toast('টুর্নামেন্ট মুছে ফেলা হয়েছে', 'success');
+    } catch (e) {
+      console.error(e);
+      toast('মুছে ফেলতে সমস্যা হয়েছে', 'error');
+    }
+  };
+
   const handleSubmitResult = async () => {
     if (!user || !resultData.tournamentId || !resultData.screenshot) {
       toast('সবগুলো তথ্য পূরণ করুন', 'error');
@@ -542,6 +573,8 @@ export default function App() {
         user_id: user.id,
         user_name: user.name || user.email || 'N/A',
         user_phone: user.phone || 'N/A',
+        ff_name: user.ff_name || 'N/A',
+        ff_uid: user.ff_uid || 'N/A',
         screenshot: resultData.screenshot,
         kills: resultData.kills,
         status: 'pending',
@@ -683,6 +716,8 @@ export default function App() {
         setPhone={setPhone}
         ffUID={ffUID}
         setFFUID={setFFUID}
+        ffName={ffName}
+        setFFName={setFFName}
         showPassword={showPassword}
         setShowPassword={setShowPassword}
         handleAuth={handleAuth}
@@ -826,6 +861,7 @@ export default function App() {
               handleApproveTransaction={handleApproveTransaction}
               handleApproveResult={handleApproveResult}
               handleUpdateUser={handleUpdateUser}
+              handleDeleteTournament={handleDeleteTournament}
               toast={toast}
             />
           )}
@@ -835,8 +871,12 @@ export default function App() {
               user={user}
               isEditingUID={isEditingUID}
               setIsEditingUID={setIsEditingUID}
+              isEditingFFName={isEditingFFName}
+              setIsEditingFFName={setIsEditingFFName}
               tempUID={tempUID}
               setTempUID={setTempUID}
+              tempFFName={tempFFName}
+              setTempFFName={setTempFFName}
               toast={toast}
             />
           )}

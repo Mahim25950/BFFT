@@ -11,8 +11,12 @@ interface ProfileTabProps {
   user: User;
   isEditingUID: boolean;
   setIsEditingUID: (val: boolean) => void;
+  isEditingFFName: boolean;
+  setIsEditingFFName: (val: boolean) => void;
   tempUID: string;
   setTempUID: (val: string) => void;
+  tempFFName: string;
+  setTempFFName: (val: string) => void;
   toast: (msg: string, type: 'success' | 'error') => void;
 }
 
@@ -20,8 +24,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   user,
   isEditingUID,
   setIsEditingUID,
+  isEditingFFName,
+  setIsEditingFFName,
   tempUID,
   setTempUID,
+  tempFFName,
+  setTempFFName,
   toast
 }) => {
   const [isUploading, setIsUploading] = React.useState(false);
@@ -152,6 +160,62 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               onClick={() => {
                 setTempUID(user.ff_uid || '');
                 setIsEditingUID(true);
+              }}
+              className="text-primary text-xs font-bold"
+            >
+              এডিট
+            </button>
+          )}
+        </div>
+
+        <div className="glass p-4 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3 flex-1">
+            <UserIcon size={20} className="text-primary" />
+            <div className="flex-1">
+              <p className="font-bold text-sm">ফ্রি ফায়ার ইন-গেম নাম</p>
+              {isEditingFFName ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input 
+                    type="text"
+                    className="input-field py-1 text-xs"
+                    value={tempFFName}
+                    onChange={(e) => setTempFFName(e.target.value)}
+                    placeholder="আপনার ইন-গেম নাম লিখুন"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={async () => {
+                      if (tempFFName.trim()) {
+                        try {
+                          await updateDoc(doc(db, "users", user.id), { ff_name: tempFFName.trim() });
+                          toast('ইন-গেম নাম আপডেট হয়েছে', 'success');
+                          setIsEditingFFName(false);
+                        } catch (e) {
+                          toast('আপডেট করতে সমস্যা হয়েছে', 'error');
+                        }
+                      }
+                    }}
+                    className="bg-primary text-white p-1 rounded-lg"
+                  >
+                    <CheckCircle2 size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setIsEditingFFName(false)}
+                    className="bg-white/10 text-white/60 p-1 rounded-lg"
+                  >
+                    <AlertCircle size={16} />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-white/40">{user.ff_name || 'সেট করা নেই'}</p>
+              )}
+            </div>
+          </div>
+          {!isEditingFFName && (
+            <button 
+              onClick={() => {
+                setTempFFName(user.ff_name || '');
+                setIsEditingFFName(true);
               }}
               className="text-primary text-xs font-bold"
             >

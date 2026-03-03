@@ -4,6 +4,7 @@ export interface User {
   email?: string;
   name?: string;
   ff_uid?: string;
+  ff_name?: string;
   avatar?: string;
   bkash_number?: string;
   nagad_number?: string;
@@ -61,6 +62,8 @@ export interface TournamentResult {
   user_id: string;
   user_name: string;
   user_phone: string;
+  ff_name?: string;
+  ff_uid?: string;
   screenshot: string;
   kills?: number;
   is_winner?: boolean;

@@ -23,6 +23,12 @@ const HomeTab: React.FC<HomeTabProps> = ({
   joinedTournaments,
   onSubmitResult
 }) => {
+  const [filter, setFilter] = React.useState<'All' | 'Solo' | 'Duo' | 'Squad'>('All');
+
+  const filteredTournaments = tournaments.filter(t => 
+    filter === 'All' ? true : t.match_type === filter
+  );
+
   return (
     <motion.div 
       key="home"
@@ -30,12 +36,28 @@ const HomeTab: React.FC<HomeTabProps> = ({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
     >
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">টুর্নামেন্ট</h1>
         <p className="text-white/40 text-sm">আপনার পছন্দের ম্যাচটি বেছে নিন</p>
       </div>
 
-      {tournaments.length === 0 ? (
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+        {['All', 'Solo', 'Duo', 'Squad'].map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilter(type as any)}
+            className={`px-6 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+              filter === type 
+                ? 'bg-primary text-black shadow-lg shadow-primary/20' 
+                : 'bg-white/5 text-white/40 hover:bg-white/10'
+            }`}
+          >
+            {type === 'All' ? 'সব ম্যাচ' : type}
+          </button>
+        ))}
+      </div>
+
+      {filteredTournaments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
             <Trophy size={40} className="text-white/20" />
@@ -45,7 +67,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {tournaments.map(t => (
+          {filteredTournaments.map(t => (
             <TournamentCard 
               key={t.id} 
               tournament={t} 

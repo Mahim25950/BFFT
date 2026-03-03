@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Trophy, CreditCard, Settings, Play } from 'lucide-react';
+import { Trophy, CreditCard, Settings, Play, Trash2 } from 'lucide-react';
 import { Tournament } from '../types';
 
 interface TournamentCardProps {
@@ -12,6 +12,7 @@ interface TournamentCardProps {
   onWatchAd?: (id: string) => void;
   isJoined?: boolean;
   onSubmitResult?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 const TournamentCard: React.FC<TournamentCardProps> = ({ 
@@ -22,7 +23,8 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   isWatchingAd = false,
   onWatchAd,
   isJoined = false,
-  onSubmitResult
+  onSubmitResult,
+  onDelete
 }) => {
   const adsRequired = tournament.ads_required || 0;
   const isFree = tournament.is_free;
@@ -53,9 +55,17 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
           {onEdit && (
             <button 
               onClick={() => onEdit(tournament)}
-              className="bg-blue-500 text-white p-1 rounded-full hover:bg-blue-600 transition-colors"
+              className="bg-blue-500 text-white p-1.5 rounded-full hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20"
             >
               <Settings size={14} />
+            </button>
+          )}
+          {onDelete && (
+            <button 
+              onClick={() => onDelete(tournament.id)}
+              className="bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+            >
+              <Trash2 size={14} />
             </button>
           )}
         </div>

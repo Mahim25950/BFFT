@@ -24,6 +24,7 @@ interface AdminPanelProps {
   handleApproveTransaction: (id: string, status: 'approved' | 'rejected') => void;
   handleApproveResult: (result: TournamentResult, status: 'approved' | 'rejected', position?: number) => void;
   handleUpdateUser: (userId: string, data: Partial<User>) => void;
+  handleDeleteTournament: (id: string) => void;
   toast: (msg: string, type: 'success' | 'error') => void;
 }
 
@@ -44,10 +45,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   handleApproveTransaction,
   handleApproveResult,
   handleUpdateUser,
+  handleDeleteTournament,
   toast
 }) => {
   const [adminSubTab, setAdminSubTab] = useState<'tournaments' | 'users' | 'notifications'>('tournaments');
   const [userSearch, setUserSearch] = useState('');
+  const [tournamentFilter, setTournamentFilter] = useState<'All' | 'Solo' | 'Duo' | 'Squad'>('All');
   const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
   const [selectedUserForBalance, setSelectedUserForBalance] = useState<User | null>(null);
   const [balanceAdjustment, setBalanceAdjustment] = useState('');
@@ -237,7 +240,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div>
                       <p className="text-xs font-bold">{r.user_name}</p>
                       <p className="text-[10px] text-white/40">{r.user_phone}</p>
-                      <p className="text-[10px] text-primary mt-1">Tournament ID: {r.tournament_id}</p>
+                      {r.ff_name && <p className="text-[10px] text-primary font-bold">FF Name: {r.ff_name}</p>}
+                      {r.ff_uid && <p className="text-[10px] text-primary font-bold">FF UID: {r.ff_uid}</p>}
+                      <p className="text-[10px] text-white/40 mt-1">Tournament ID: {r.tournament_id}</p>
                       {r.kills !== undefined && (
                         <p className="text-xs font-bold text-green-500 mt-1">কিল: {r.kills}</p>
                       )}
@@ -296,8 +301,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <h3 className="font-bold mb-4">টুর্নামেন্ট ম্যানেজমেন্ট</h3>
+            
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+              {['All', 'Solo', 'Duo', 'Squad'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setTournamentFilter(type as any)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                    tournamentFilter === type 
+                      ? 'bg-primary text-black' 
+                      : 'bg-white/5 text-white/40 hover:bg-white/10'
+                  }`}
+                >
+                  {type === 'All' ? 'সব ম্যাচ' : type}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-4">
-              {tournaments.map(t => (
+              {tournaments
+                .filter(t => tournamentFilter === 'All' ? true : t.match_type === tournamentFilter)
+                .map(t => (
                 <TournamentCard 
                   key={t.id} 
                   tournament={t} 
@@ -306,6 +330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     setEditingTournament(tournament);
                     setIsEditTournamentModalOpen(true);
                   }}
+                  onDelete={handleDeleteTournament}
                 />
               ))}
             </div>
@@ -353,6 +378,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="text-right">
                       <p className="text-primary font-bold">৳{u.balance}</p>
                       <p className="text-[10px] text-white/40">UID: {u.ff_uid || 'N/A'}</p>
+                      <p className="text-[10px] text-white/40">FF Name: {u.ff_name || 'N/A'}</p>
                     </div>
                   </div>
 

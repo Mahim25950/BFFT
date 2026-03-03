@@ -15,6 +15,8 @@ interface AuthFormProps {
   setPhone: (val: string) => void;
   ffUID: string;
   setFFUID: (val: string) => void;
+  ffName: string;
+  setFFName: (val: string) => void;
   showPassword: boolean;
   setShowPassword: (val: boolean) => void;
   handleAuth: () => void;
@@ -34,6 +36,8 @@ const AuthForm: React.FC<AuthFormProps> = ({
   setPhone,
   ffUID,
   setFFUID,
+  ffName,
+  setFFName,
   showPassword,
   setShowPassword,
   handleAuth,
@@ -98,6 +102,16 @@ const AuthForm: React.FC<AuthFormProps> = ({
                   onChange={(e) => setFFUID(e.target.value)}
                 />
               </div>
+              <div className="relative">
+                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="ফ্রি ফায়ার ইন-গেম নাম" 
+                  className="input-field pl-12"
+                  value={ffName}
+                  onChange={(e) => setFFName(e.target.value)}
+                />
+              </div>
             </motion.div>
           )}
 
@@ -146,6 +160,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
               setName('');
               setPhone('');
               setFFUID('');
+              setFFName('');
             }}
             className="w-full text-center text-sm text-white/40 hover:text-primary transition-colors"
           >
