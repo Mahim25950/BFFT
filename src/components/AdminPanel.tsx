@@ -22,7 +22,7 @@ interface AdminPanelProps {
   allUsers: User[];
   pendingResults: TournamentResult[];
   handleApproveTransaction: (id: string, status: 'approved' | 'rejected') => void;
-  handleApproveResult: (result: TournamentResult, status: 'approved' | 'rejected', isWinner?: boolean) => void;
+  handleApproveResult: (result: TournamentResult, status: 'approved' | 'rejected', position?: number) => void;
   handleUpdateUser: (userId: string, data: Partial<User>) => void;
   toast: (msg: string, type: 'success' | 'error') => void;
 }
@@ -66,7 +66,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedUserForHistory, setSelectedUserForHistory] = useState<User | null>(null);
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [winnerResults, setWinnerResults] = useState<Record<string, boolean>>({});
+  const [resultPositions, setResultPositions] = useState<Record<string, number>>({});
 
   const fetchUserTransactions = async (userId: string) => {
     setIsLoadingHistory(true);
@@ -245,14 +245,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="text-right">
                        <p className="text-[10px] text-white/40">জমা দেওয়া হয়েছে:</p>
                        <p className="text-[10px] text-white/60">{new Date(r.created_at?.seconds * 1000).toLocaleString('bn-BD')}</p>
-                       <div className="mt-2 flex items-center justify-end gap-2">
-                         <span className="text-[10px] text-white/40">Winner?</span>
-                         <button 
-                           onClick={() => setWinnerResults({ ...winnerResults, [r.id]: !winnerResults[r.id] })}
-                           className={`w-8 h-4 rounded-full transition-colors relative ${winnerResults[r.id] ? 'bg-primary' : 'bg-white/10'}`}
-                         >
-                           <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${winnerResults[r.id] ? 'left-4.5' : 'left-0.5'}`} />
-                         </button>
+                       <div className="mt-2 flex flex-col items-end gap-2">
+                         <span className="text-[10px] text-white/40">পজিশন:</span>
+                          <div className="flex gap-1">
+                            {[1, 2, 3].map(pos => (
+                              <button
+                                key={pos}
+                                onClick={() => setResultPositions({ ...resultPositions, [r.id]: resultPositions[r.id] === pos ? 0 : pos })}
+                                className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold transition-colors ${resultPositions[r.id] === pos ? 'bg-primary text-black' : 'bg-white/10 text-white/40'}`}
+                              >
+                                {pos}
+                              </button>
+                            ))}
+                          </div>
                        </div>
                     </div>
                   </div>
@@ -275,7 +280,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       বাতিল
                     </button>
                     <button 
-                      onClick={() => handleApproveResult(r, 'approved', winnerResults[r.id])}
+                      onClick={() => handleApproveResult(r, 'approved', resultPositions[r.id] || 0)}
                       className="bg-green-500 text-white py-2 rounded-lg text-sm font-bold"
                     >
                       পুরস্কার দিন
@@ -662,6 +667,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">১ম পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={newTournament.prize_1st}
+                      onChange={(e) => setNewTournament({...newTournament, prize_1st: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">২য় পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={newTournament.prize_2nd}
+                      onChange={(e) => setNewTournament({...newTournament, prize_2nd: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">৩য় পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={newTournament.prize_3rd}
+                      onChange={(e) => setNewTournament({...newTournament, prize_3rd: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">রুম আইডি (ঐচ্ছিক)</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      value={newTournament.room_id}
+                      onChange={(e) => setNewTournament({...newTournament, room_id: e.target.value})}
+                      placeholder="Room ID"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">রুম পাসওয়ার্ড (ঐচ্ছিক)</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      value={newTournament.room_password}
+                      onChange={(e) => setNewTournament({...newTournament, room_password: e.target.value})}
+                      placeholder="Password"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl">
                   <div>
                     <p className="text-sm font-bold">ফ্রি ম্যাচ (বিজ্ঞাপন দেখে জয়েন)</p>
@@ -782,6 +840,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           banner: '',
                           entry_fee: 0,
                           prize_pool: 0,
+                          prize_1st: 0,
+                          prize_2nd: 0,
+                          prize_3rd: 0,
+                          room_id: '',
+                          room_password: '',
                           match_type: 'Solo',
                           map_type: 'Bermuda',
                           start_time: '',
@@ -865,6 +928,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="input-field"
                       value={editingTournament.prize_pool}
                       onChange={(e) => setEditingTournament({...editingTournament, prize_pool: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">১ম পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={editingTournament.prize_1st || 0}
+                      onChange={(e) => setEditingTournament({...editingTournament, prize_1st: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">২য় পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={editingTournament.prize_2nd || 0}
+                      onChange={(e) => setEditingTournament({...editingTournament, prize_2nd: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">৩য় পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={editingTournament.prize_3rd || 0}
+                      onChange={(e) => setEditingTournament({...editingTournament, prize_3rd: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">রুম আইডি (ঐচ্ছিক)</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      value={editingTournament.room_id || ''}
+                      onChange={(e) => setEditingTournament({...editingTournament, room_id: e.target.value})}
+                      placeholder="Room ID"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">রুম পাসওয়ার্ড (ঐচ্ছিক)</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      value={editingTournament.room_password || ''}
+                      onChange={(e) => setEditingTournament({...editingTournament, room_password: e.target.value})}
+                      placeholder="Password"
                     />
                   </div>
                 </div>

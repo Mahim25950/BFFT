@@ -37,6 +37,7 @@ import WalletTab from './components/WalletTab';
 import ProfileTab from './components/ProfileTab';
 import HomeTab from './components/HomeTab';
 import NotificationsTab from './components/NotificationsTab';
+import MyMatchesTab from './components/MyMatchesTab';
 import Header from './components/Header';
 import Toast from './components/Toast';
 
@@ -95,6 +96,11 @@ export default function App() {
     banner: '',
     entry_fee: 0,
     prize_pool: 0,
+    prize_1st: 0,
+    prize_2nd: 0,
+    prize_3rd: 0,
+    room_id: '',
+    room_password: '',
     match_type: 'Solo',
     map_type: 'Bermuda',
     start_time: '',
@@ -216,13 +222,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, "notifications"), orderBy("created_at", "desc"), limit(20));
+    const q = query(collection(db, "notifications"), orderBy("created_at", "desc"), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const notifList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as NotificationType))
+        .filter(n => !n.user_id || n.user_id === user?.id || n.user_id === 'global');
       setNotifications(notifList);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -550,25 +558,33 @@ export default function App() {
     }
   };
 
-  const handleApproveResult = async (result: TournamentResult, status: 'approved' | 'rejected', isWinner?: boolean) => {
+  const handleApproveResult = async (result: TournamentResult, status: 'approved' | 'rejected', position: number = 0) => {
     if (!user?.is_admin) return;
 
     try {
       await runTransaction(db, async (transaction) => {
         const resultDoc = await transaction.get(doc(db, "tournament_results", result.id));
-        if (!resultDoc.exists()) throw "Result does not exist!";
+        if (!resultDoc.exists()) throw new Error("Result does not exist!");
 
-        transaction.update(doc(db, "tournament_results", result.id), { status, is_winner: isWinner });
-
+        let tournamentData: any = null;
         if (status === 'approved') {
           const tournamentDoc = await transaction.get(doc(db, "tournaments", result.tournament_id));
-          if (!tournamentDoc.exists()) throw "Tournament does not exist!";
-          
-          const tournamentData = tournamentDoc.data();
-          const prizePool = isWinner ? (tournamentData.prize_pool || 0) : 0;
+          if (!tournamentDoc.exists()) throw new Error("Tournament does not exist!");
+          tournamentData = tournamentDoc.data();
+        }
+
+        // All reads are done, now start writes
+        transaction.update(doc(db, "tournament_results", result.id), { status, position });
+
+        if (status === 'approved' && tournamentData) {
+          let positionPrize = 0;
+          if (position === 1) positionPrize = tournamentData.prize_1st || 0;
+          else if (position === 2) positionPrize = tournamentData.prize_2nd || 0;
+          else if (position === 3) positionPrize = tournamentData.prize_3rd || 0;
+
           const perKill = tournamentData.per_kill || 0;
           const kills = result.kills || 0;
-          const totalPrize = prizePool + (kills * perKill);
+          const totalPrize = positionPrize + (kills * perKill);
           
           if (totalPrize > 0) {
             transaction.update(doc(db, "users", result.user_id), {
@@ -590,17 +606,18 @@ export default function App() {
           // Create notification for user
           const newNotifRef = doc(collection(db, "notifications"));
           transaction.set(newNotifRef, {
-            title: isWinner ? 'অভিনন্দন! আপনি জিতেছেন' : 'টুর্নামেন্ট রিওয়ার্ড',
-            message: `আপনার ${tournamentData.title} টুর্নামেন্টের পুরস্কার ৳${totalPrize} (প্রাইজ: ৳${prizePool}, কিল: ${kills}x৳${perKill}) ব্যালেন্সে যোগ করা হয়েছে।`,
+            user_id: result.user_id,
+            title: position > 0 ? `অভিনন্দন! আপনি ${position}তম হয়েছেন` : 'টুর্নামেন্ট রিওয়ার্ড',
+            message: `আপনার ${tournamentData.title} টুর্নামেন্টের পুরস্কার ৳${totalPrize} (প্রাইজ: ৳${positionPrize}, কিল: ${kills}x৳${perKill}) ব্যালেন্সে যোগ করা হয়েছে।`,
             type: 'success',
             created_at: Timestamp.now()
           });
         }
       });
       toast(status === 'approved' ? 'রেজাল্ট অনুমোদন করা হয়েছে' : 'রেজাল্ট বাতিল করা হয়েছে', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast('অপারেশন ব্যর্থ হয়েছে', 'error');
+      toast(`অপারেশন ব্যর্থ হয়েছে: ${e.message || ''}`, 'error');
     }
   };
 
@@ -751,6 +768,21 @@ export default function App() {
               isWatchingAd={isWatchingAd}
               onWatchAd={handleWatchAd}
               joinedTournaments={joinedTournaments}
+              onSubmitResult={(id) => {
+                setResultData({ ...resultData, tournamentId: id });
+                setIsResultModalOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'my-matches' && (
+            <MyMatchesTab 
+              tournaments={tournaments}
+              joinedTournaments={joinedTournaments}
+              handleJoinTournament={handleJoinTournament}
+              adProgress={adProgress}
+              isWatchingAd={isWatchingAd}
+              onWatchAd={handleWatchAd}
               onSubmitResult={(id) => {
                 setResultData({ ...resultData, tournamentId: id });
                 setIsResultModalOpen(true);

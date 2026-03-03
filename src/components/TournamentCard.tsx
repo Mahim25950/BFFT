@@ -84,6 +84,50 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
           )}
         </div>
 
+        {/* Prize Pool Details */}
+        {(tournament.prize_1st || tournament.prize_2nd || tournament.prize_3rd) && (
+          <div className="mb-4 bg-white/5 p-3 rounded-xl border border-white/5 grid grid-cols-3 gap-2 text-center">
+            {tournament.prize_1st && (
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold">1st Prize</p>
+                <p className="text-sm font-bold text-yellow-500">৳{tournament.prize_1st}</p>
+              </div>
+            )}
+            {tournament.prize_2nd && (
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold">2nd Prize</p>
+                <p className="text-sm font-bold text-zinc-300">৳{tournament.prize_2nd}</p>
+              </div>
+            )}
+            {tournament.prize_3rd && (
+              <div>
+                <p className="text-[10px] text-white/40 uppercase font-bold">3rd Prize</p>
+                <p className="text-sm font-bold text-amber-700">৳{tournament.prize_3rd}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Room Details (Only for Joined Users) */}
+        {isJoined && (tournament.room_id || tournament.room_password) && (
+          <div className="mb-4 bg-primary/10 p-3 rounded-xl border border-primary/20">
+            <p className="text-[10px] text-primary uppercase font-bold mb-2 flex items-center gap-1">
+              <Play size={10} /> রুম ডিটেইলস
+            </p>
+            <div className="flex justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-[10px] text-white/40">Room ID</p>
+                <p className="text-sm font-mono font-bold text-white">{tournament.room_id || 'Not Set'}</p>
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-white/40">Password</p>
+                <p className="text-sm font-mono font-bold text-white">{tournament.room_password || 'Not Set'}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-white/30 mt-2 italic">* রুম আইডি এবং পাসওয়ার্ড কাউকে শেয়ার করবেন না</p>
+          </div>
+        )}
+
         {isFree && !adsComplete && (
           <div className="mb-4 bg-white/5 p-3 rounded-xl border border-white/5">
             <div className="flex justify-between items-center mb-2">

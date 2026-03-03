@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Wallet, LayoutDashboard, Bell, User as UserIcon } from 'lucide-react';
+import { Home, Wallet, LayoutDashboard, Bell, User as UserIcon, Trophy } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -12,6 +12,10 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, isAdmin }) => 
     <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-primary' : 'text-white/50'}`}>
       <Home size={24} />
       <span className="text-[10px]">হোম</span>
+    </button>
+    <button onClick={() => setActiveTab('my-matches')} className={`flex flex-col items-center gap-1 ${activeTab === 'my-matches' ? 'text-primary' : 'text-white/50'}`}>
+      <Trophy size={24} />
+      <span className="text-[10px]">ম্যাচ</span>
     </button>
     <button onClick={() => setActiveTab('wallet')} className={`flex flex-col items-center gap-1 ${activeTab === 'wallet' ? 'text-primary' : 'text-white/50'}`}>
       <Wallet size={24} />
