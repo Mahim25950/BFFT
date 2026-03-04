@@ -94,3 +94,10 @@ export interface Announcement {
   button_link?: string;
   updated_at: any;
 }
+
+export interface LeaderboardPrizes {
+  prize_1st: number;
+  prize_2nd: number;
+  prize_3rd: number;
+  updated_at: any;
+}

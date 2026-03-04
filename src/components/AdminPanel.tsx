@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, ShieldCheck, Search, Ban, UserCheck, CreditCard, Shield, ShieldAlert, Bell, Send, Megaphone, Image as ImageIcon, Link as LinkIcon, History, Clock } from 'lucide-react';
+import { Plus, ShieldCheck, Search, Ban, UserCheck, CreditCard, Shield, ShieldAlert, Bell, Send, Megaphone, Image as ImageIcon, Link as LinkIcon, History, Clock, Trophy } from 'lucide-react';
 import { Tournament, Transaction, User, Announcement, TournamentResult } from '../types';
 import TournamentCard from './TournamentCard';
 import { collection, addDoc, updateDoc, doc, Timestamp, getDoc, setDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
@@ -64,6 +64,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     button_link: ''
   });
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [leaderboardPrizeForm, setLeaderboardPrizeForm] = useState({ prize_1st: 0, prize_2nd: 0, prize_3rd: 0 });
+  const [isSavingPrizes, setIsSavingPrizes] = useState(false);
   const [isCreatingTournament, setIsCreatingTournament] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedUserForHistory, setSelectedUserForHistory] = useState<User | null>(null);
@@ -104,7 +106,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           setAnnouncementForm(docSnap.data());
         }
       };
+      const fetchLeaderboardPrizes = async () => {
+        const docRef = doc(db, "settings", "leaderboard_prizes");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setLeaderboardPrizeForm({
+            prize_1st: data.prize_1st || 0,
+            prize_2nd: data.prize_2nd || 0,
+            prize_3rd: data.prize_3rd || 0
+          });
+        }
+      };
       fetchAnnouncement();
+      fetchLeaderboardPrizes();
     }
   }, [adminSubTab]);
 
@@ -514,6 +529,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   >
                     <Send size={18} />
                     পাঠিয়ে দিন
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass p-6 rounded-3xl mt-8">
+              <h3 className="font-bold mb-6 flex items-center gap-2">
+                <Trophy size={20} className="text-primary" />
+                লিডারবোর্ড উইকলি প্রাইজ সেট করুন
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">১ম পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={leaderboardPrizeForm.prize_1st}
+                      onChange={(e) => setLeaderboardPrizeForm({...leaderboardPrizeForm, prize_1st: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">২য় পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={leaderboardPrizeForm.prize_2nd}
+                      onChange={(e) => setLeaderboardPrizeForm({...leaderboardPrizeForm, prize_2nd: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">৩য় পুরস্কার (৳)</label>
+                    <input 
+                      type="number"
+                      className="input-field"
+                      value={leaderboardPrizeForm.prize_3rd}
+                      onChange={(e) => setLeaderboardPrizeForm({...leaderboardPrizeForm, prize_3rd: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    disabled={isSavingPrizes}
+                    onClick={async () => {
+                      setIsSavingPrizes(true);
+                      try {
+                        await setDoc(doc(db, "settings", "leaderboard_prizes"), {
+                          ...leaderboardPrizeForm,
+                          updated_at: Timestamp.now()
+                        }, { merge: true });
+                        toast('লিডারবোর্ড প্রাইজ আপডেট হয়েছে', 'success');
+                      } catch (e: any) {
+                        console.error(e);
+                        toast(`Error: ${e.message || 'আপডেট করতে সমস্যা হয়েছে'}`, 'error');
+                      } finally {
+                        setIsSavingPrizes(false);
+                      }
+                    }}
+                    className="btn-primary w-full py-4 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSavingPrizes ? 'সেভ হচ্ছে...' : 'প্রাইজ সেভ করুন'}
                   </button>
                 </div>
               </div>

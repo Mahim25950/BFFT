@@ -227,7 +227,7 @@ const WalletTab: React.FC<WalletTabProps> = ({
                 <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
                   <p className="text-[10px] text-primary font-bold mb-1 uppercase">নির্দেশনা:</p>
                   <p className="text-[10px] text-white/60 leading-relaxed">
-                    আমাদের {depositData.method.toUpperCase()} পার্সোনাল নাম্বারে (০১৭XXXXXXXX) সেন্ড মানি করুন এবং ট্রানজাকশন আইডিটি এখানে দিন। ৫-১০ মিনিটের মধ্যে ব্যালেন্স যোগ হবে।
+                    আমাদের {depositData.method.toUpperCase()} পার্সোনাল নাম্বারে (০১৬৪৭১৬২০৬৯) সেন্ড মানি করুন এবং ট্রানজাকশন আইডিটি এখানে দিন। ৫-১০ মিনিটের মধ্যে ব্যালেন্স যোগ হবে।
                   </p>
                 </div>
 

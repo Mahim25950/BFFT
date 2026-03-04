@@ -28,7 +28,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './lib/firebase';
-import { User as UserType, Tournament, Transaction, Notification as NotificationType, Announcement, TournamentResult } from './types';
+import { User as UserType, Tournament, Transaction, Notification as NotificationType, Announcement, TournamentResult, LeaderboardPrizes } from './types';
 import { X, ExternalLink, Trophy, Wallet, Bell, LayoutDashboard, User as UserIcon } from 'lucide-react';
 
 // Components
@@ -133,6 +133,16 @@ export default function App() {
     kills: 0
   });
   const [pendingResults, setPendingResults] = useState<TournamentResult[]>([]);
+  const [leaderboardPrizes, setLeaderboardPrizes] = useState<LeaderboardPrizes | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, "settings", "leaderboard_prizes"), (doc) => {
+      if (doc.exists()) {
+        setLeaderboardPrizes(doc.data() as LeaderboardPrizes);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -907,7 +917,7 @@ export default function App() {
           )}
 
           {activeTab === 'leaderboard' && (
-            <LeaderboardTab users={allUsers} />
+            <LeaderboardTab users={allUsers} prizes={leaderboardPrizes} />
           )}
 
           {activeTab === 'my-matches' && (
