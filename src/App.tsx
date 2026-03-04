@@ -917,7 +917,11 @@ export default function App() {
           )}
 
           {activeTab === 'leaderboard' && (
-            <LeaderboardTab users={allUsers} prizes={leaderboardPrizes} />
+            <LeaderboardTab 
+              users={allUsers} 
+              prizes={leaderboardPrizes} 
+              currentUser={user}
+            />
           )}
 
           {activeTab === 'my-matches' && (
